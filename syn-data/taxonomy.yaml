@@ -1,0 +1,113 @@
+# synthetic_pipeline/taxonomy.yaml
+# List of user-intent buckets with ≥5 seed questions each.
+# Claude: load this file as YAML → iterate over items to sample seeds.
+
+- intent: hardware_request_laptop
+  seed_questions:
+    - "I need a laptop for my new hire."
+    - "How do I replace my damaged company laptop?"
+    - "I want a new macbook"
+    - "hr told me to get a new laptop, how to get it?"
+
+- intent: hardware_request_peripherals
+  seed_questions:
+    - "I need a second monitor for my desk."
+    - "Can you get me a wireless keyboard and mouse?"
+    - "What's the process to request a docking station?"
+    - "I lost my laptop charger, can I get a new one?"
+    - "Requesting a webcam for remote meetings."
+
+- intent: software_license
+  seed_questions:
+    - "How do I get an Adobe Creative Cloud license?"
+    - "Please install IntelliJ Ultimate on my workstation."
+    - "I need a Visio license for network diagrams."
+    - "Can someone provision Figma for our design team?"
+    - "What's the process for getting a Zoom Pro account?"
+
+- intent: access_request
+  seed_questions:
+    - "Grant me edit access to the Salesforce dashboard."
+    - "I need VPN credentials for the staging environment."
+    - "How can I access the HR shared drive?"
+    - "Requesting admin rights on Jenkins."
+    - "Add me to the #finance-ops Slack channel."
+
+- intent: policy_question
+  seed_questions:
+    - "What’s the company’s remote-work policy?"
+    - "Do we have a mobile phone reimbursement policy?"
+    - "How many casual leave days do we get per year?"
+    - "Is there a dress-code policy for client meetings?"
+    - "Where can I find the data-retention guidelines?"
+    
+
+- intent: benefits_question
+  seed_questions:
+    - "How do I add my spouse to my medical insurance?"
+    - "What are the parental-leave benefits?"
+    - "Can you explain our gym membership subsidy?"
+    - "When do ESOPs start vesting?"
+    - "What wellness programs are available this quarter?"
+    - "How do I add my spouse to my medical insurance?"
+    - "What are the parental-leave benefits?"
+    - "Can you explain our gym membership subsidy?"
+    - "When do ESOPs start vesting?"
+    - "What wellness programs are available this quarter?"
+
+- intent: payroll_question
+  seed_questions:
+    - "When will June salaries be credited?"
+    - "Why is my tax deducted at a higher slab this month?"
+    - "Can you share my latest Form 16?"
+    - "How do I update my bank account for payroll?"
+    - "What’s the timeline for year-end bonus payouts?"
+
+- intent: expense_reimbursement
+  seed_questions:
+    - "How do I file a travel expense for last week’s trip?"
+    - "What’s the per diem rate for Bangalore?"
+    - "Can I reimburse a home-office chair purchase?"
+    - "My Uber receipts aren't uploading—help?"
+    - "Is there a limit on client-dinner expenses?"
+
+
+- intent: equipment_return
+  seed_questions:
+    - "I’m off-boarding—how do I return my laptop?"
+    - "Where do I ship my monitor after resignation?"
+    - "Need instructions on wiping data before device return."
+    - "Can I schedule a pickup for my company phone?"
+    - "What’s the process if accessories are missing?"
+    - "I need to return my laptop, can you help?"
+
+- intent: incident_report
+  seed_questions:
+    - "My laptop won’t boot—need urgent help."
+    - "The VPN keeps disconnecting every 5 minutes."
+    - "I accidentally deleted files from the shared drive."
+    - "Email attachment scanning is blocking a legitimate file."
+    - "System performance is slow after the latest update."
+    - "My laptop is running slow, can you help?"
+    - "The VPN is not working, can you help?"
+    - "The email is not working, can you help?"
+    - "The calendar is not working, can you help?"
+    - "The chat is not working, can you help?"
+    - "The files are not working, can you help?"
+    - "The drive is not working, can you help?"
+    - "The system is not working, can you help?"
+    - "The network is not working, can you help?"
+    - "The printer is not working, can you help?"
+    - "The scanner is not working, can you help?"
+    - "The projector is not working, can you help?"
+    - "The microphone is not working, can you help?"
+    - "The speakers are not working, can you help?"
+    - "The camera is not working, can you help?"
+
+- intent: knowledge_navigation
+  seed_questions:
+    - "Find the latest OKR slide deck for Q3."
+    - "Locate the onboarding guide for new engineers."
+    - "Where’s the incident-postmortem for outage on 2025-05-12?"
+    - "Show me the design doc for Project Helix."
+    - "Find meeting notes from last week’s AI task-force call."
