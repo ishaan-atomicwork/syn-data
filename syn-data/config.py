@@ -75,7 +75,12 @@ TOOLS = [
     "KnowledgeSearchTool",
     "MyRequestsTool",
     "MyPendingApprovalsTool",
-    "RespondToUserTool"
+    "RespondToUserTool",
+    "SystemDiagnosticTool",
+    "BrowserTool",
+    "TavilyTool",
+    "GeneralRCATool",
+    "FetchSimilarRequestsTool"
 ]
 
 MODEL_NAME = "gpt-4o"
