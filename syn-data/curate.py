@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def check_turn_count(conversation: List[Dict[str, Any]]) -> bool:
-    return len(conversation) >= 3
+    return len(conversation) >= 5
 
 def check_tool_calls(conversation: List[Dict[str, Any]]) -> bool:
     for turn in conversation: # check if the assistant has called a tool
@@ -23,7 +23,10 @@ def check_tool_calls(conversation: List[Dict[str, Any]]) -> bool:
     return False
 
 def check_reasoning_coherence(conversation: List[Dict[str, Any]]) -> bool:
-    """Check if reasoning mentions every tool that was actually called."""
+    """
+    goal is to check if the assistant's reasoning mentions every tool that was actually called
+    """
+
     for turn in conversation:
         if turn.get("role") == "assistant":
             content = turn.get("content", {})
@@ -50,9 +53,8 @@ def check_reasoning_coherence(conversation: List[Dict[str, Any]]) -> bool:
                         break
                 
                 if not found:
-                    logger.debug(f"Tool {tool} not mentioned in reasoning: {reasoning[:100]}...")
+                    logger.debug(f"tool {tool} not mentioned in reasoning")
                     return False
-    
     return True
 
 def get_first_user_message_hash(conversation: List[Dict[str, Any]]) -> str:
@@ -79,79 +81,86 @@ def check_invalid_assistant_turns(conversation: List[Dict[str, Any]]) -> bool:
     invalid_rate = invalid_count / len(assistant_turns)
     return invalid_rate <= 0.25
 
-def check_conversation_quality(conversation: List[Dict[str, Any]]) -> bool:
-    
-    user_messages = [turn.get("content", "") for turn in conversation if turn.get("role") == "user"]
-    if len(user_messages) < 2:
+def check_ends_with_respond_to_user(conversation: List[Dict[str, Any]]) -> bool:
+    """
+    very imp to check if conversation ends with RespondToUserTool
+    """
+    if not conversation:
         return False
     
-    failure_keywords = ["didn't work", "no results", "failed", "error", "down", "not helpful"]
-    success_keywords = ["perfect", "great", "excellent", "thanks", "helpful", "worked"]
+    last_turn = conversation[-1]
+    if last_turn.get("role") != "assistant":
+        return False
     
-    user_text = " ".join(user_messages).lower()
-    has_failure_scenario = any(keyword in user_text for keyword in failure_keywords)
-    has_success_scenario = any(keyword in user_text for keyword in success_keywords)
+    content = last_turn.get("content", {})
+    tool_calls = content.get("tool_calls", [])
     
-    return has_failure_scenario or has_success_scenario
+    if not tool_calls:
+        return False
+    
+    # Check if the last tool call is RespondToUserTool
+    last_tool_call = tool_calls[-1]
+    return last_tool_call.get("tool") == "RespondToUserTool"
 
 def filter_convos(infile: str, outfile: str) -> None:
     """
     Filter conversations based on curation heuristics.
     
     Args:
-        infile: Input JSONL file path
-        outfile: Output JSONL file path
+        infile: Input JSON file path
+        outfile: Output JSON file path
     """
     seen_hashes: Set[str] = set()
     kept_count = 0
     total_count = 0
     
-    with open(infile, 'r') as f_in, open(outfile, 'w') as f_out:
-        for line_num, line in enumerate(f_in, 1):
-            line = line.strip()
-            if not line:
-                continue
-            
-            total_count += 1
-            
-            try:
-                conversation = json.loads(line)
-                
-                if not check_turn_count(conversation):
-                    logger.debug(f"Line {line_num}: Failed turn count check")
-                    continue
-                
-                if not check_tool_calls(conversation):
-                    logger.debug(f"Line {line_num}: Failed tool calls check")
-                    continue
-                
-                if not check_reasoning_coherence(conversation):
-                    logger.debug(f"Line {line_num}: Failed reasoning coherence check")
-                    continue
-                
-                first_msg_hash = get_first_user_message_hash(conversation)
-                if first_msg_hash in seen_hashes:
-                    logger.debug(f"Line {line_num}: Duplicate first message hash")
-                    continue
-                seen_hashes.add(first_msg_hash)
-                
-                if not check_invalid_assistant_turns(conversation):
-                    logger.debug(f"Line {line_num}: Failed invalid assistant turns check")
-                    continue
-                
-                if not check_conversation_quality(conversation):
-                    logger.debug(f"Line {line_num}: Failed conversation quality check")
-                    continue
-                
-                f_out.write(json.dumps(conversation) + '\n')
-                kept_count += 1
-                
-            except json.JSONDecodeError as e:
-                logger.debug(f"Line {line_num}: JSON decode error: {e}")
-                continue
-            except Exception as e:
-                logger.debug(f"Line {line_num}: Unexpected error: {e}")
-                continue
+    # Load the input JSON dataset
+    with open(infile, 'r') as f:
+        dataset = json.load(f)
+    
+    input_conversations = dataset.get("conversations", [])
+    total_count = len(input_conversations)
+    
+    filtered_conversations = []
+    
+    for i, conversation in enumerate(input_conversations):
+        
+        if not check_turn_count(conversation):
+            logger.debug(f"Conversation {i+1}: Failed turn count check")
+            continue
+        
+        if not check_tool_calls(conversation):
+            logger.debug(f"Conversation {i+1}: Failed tool calls check")
+            continue
+        
+        if not check_reasoning_coherence(conversation):
+            logger.debug(f"Conversation {i+1}: Failed reasoning coherence check")
+            continue
+        
+        first_msg_hash = get_first_user_message_hash(conversation)
+        if first_msg_hash in seen_hashes:
+            logger.debug(f"Conversation {i+1}: Duplicate first message hash")
+            continue
+        seen_hashes.add(first_msg_hash)
+        
+        if not check_invalid_assistant_turns(conversation):
+            logger.debug(f"Conversation {i+1}: Failed invalid assistant turns check")
+            continue
+        
+        if not check_ends_with_respond_to_user(conversation):
+            logger.debug(f"Conversation {i+1}: Failed ends with RespondToUserTool check")
+            continue
+        
+        # Keep the conversation
+        filtered_conversations.append(conversation)
+        kept_count += 1
+    
+    output_dataset = {
+        "conversations": filtered_conversations
+    }
+    
+    with open(outfile, 'w') as f:
+        json.dump(output_dataset, f, indent=2)
     
     logger.info(f"Kept {kept_count} out of {total_count} conversations")
     if total_count > 0:
@@ -160,14 +169,12 @@ def filter_convos(infile: str, outfile: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="Filter and curate conversations for tool usage training")
-    parser.add_argument("infile", help="Input JSONL file")
-    parser.add_argument("outfile", help="Output JSONL file")
+    parser.add_argument("infile", help="Input JSON file")
+    parser.add_argument("outfile", help="Output JSON file")
     args = parser.parse_args()
     
     try:
         filter_convos(args.infile, args.outfile)
-    except FileNotFoundError:
-        logger.error(f"Input file {args.infile} not found")
     except Exception as e:
         logger.error(f"Error during curation: {e}")
 
