@@ -75,13 +75,43 @@ class CategoryBGenerator(curator.LLM):
 
 SEED QUESTION: {seed_question}
 
-CORRECT CONVERSATION FLOW EXAMPLE:
-1. User: "Help me with VPN setup"
-2. Assistant: JSON with KnowledgeSearchTool + FindCatalogTool (information gathering)
-3. User: [tool execution results list] (just the results, not a question)
-4. Assistant: JSON with ONLY RespondToUserTool (actual answer to user)
-5. User: "What if I'm working from China?" (follow-up question)
-6. Assistant: JSON with ONLY RespondToUserTool (answer to follow-up)
+INTELLIGENT TOOL USAGE DECISION MAKING:
+The assistant should intelligently decide when to use tools vs when to respond directly based on:
+
+WHEN TO USE INFORMATION-GATHERING TOOLS:
+- Question requires policy lookup, procedure verification, or technical documentation
+- Need to check available services, forms, or catalog items
+- Must verify current status, eligibility, or existing requests
+- Complex troubleshooting requiring diagnostic information
+- Multi-step processes requiring comprehensive guidance
+- Questions about compliance, security, or approval workflows
+
+WHEN TO USE ONLY RespondToUserTool:
+- Simple clarification questions that can be answered from previous context
+- Basic follow-up questions about already-retrieved information
+- Straightforward explanations of procedures already found
+- Questions about timelines, contacts, or next steps when info is already available
+- Simple "what if" scenarios that don't require new data
+
+CONVERSATION FLOW EXAMPLES:
+
+EXAMPLE 1 (Complex Follow-up requiring tools):
+1. User: "I need a new laptop"
+2. Assistant: Uses KnowledgeSearchTool + FindCatalogTool (needs policy/catalog info)
+3. User: [tool results]
+4. Assistant: Uses RespondToUserTool (answers with retrieved info)
+5. User: "What about software licensing for the new laptop?"
+6. Assistant: Uses KnowledgeSearchTool + FindCatalogTool (NEW topic needs research)
+7. User: [tool results]
+8. Assistant: Uses RespondToUserTool (answers software question)
+
+EXAMPLE 2 (Simple Follow-up using existing context):
+1. User: "What's the parental leave policy?"
+2. Assistant: Uses KnowledgeSearchTool + FindCatalogTool (needs policy info)
+3. User: [tool results]
+4. Assistant: Uses RespondToUserTool (comprehensive policy answer)
+5. User: "How long does the approval process take?"
+6. Assistant: Uses ONLY RespondToUserTool (info already retrieved in step 2)
 
 PATTERN A (8 turns - 2 User Questions):
 TURN 1 - USER: {seed_question}
@@ -89,8 +119,8 @@ TURN 2 - ASSISTANT: Use information-gathering tools (KnowledgeSearchTool, FindCa
 TURN 3 - USER: Tool execution results (just the list, not a question)
 TURN 4 - ASSISTANT: Use ONLY RespondToUserTool to answer the original question
 TURN 5 - USER: Realistic follow-up question #1
-TURN 6 - ASSISTANT: Use information-gathering tools if needed OR use ONLY RespondToUserTool
-TURN 7 - USER: Tool execution results (if Turn 6 had info gathering) OR second follow-up question
+TURN 6 - ASSISTANT: **DECIDE INTELLIGENTLY**: Use information-gathering tools if question requires NEW data/research OR use ONLY RespondToUserTool if answerable from existing context
+TURN 7 - USER: Tool execution results (if Turn 6 had info gathering) OR second follow-up question (if Turn 6 answered directly)
 TURN 8 - ASSISTANT: Use ONLY RespondToUserTool to answer the final question
 
 PATTERN B (10 turns - 3 User Questions):
@@ -99,11 +129,11 @@ TURN 2 - ASSISTANT: Use information-gathering tools (KnowledgeSearchTool, FindCa
 TURN 3 - USER: Tool execution results (just the list, not a question)
 TURN 4 - ASSISTANT: Use ONLY RespondToUserTool to answer the original question
 TURN 5 - USER: Realistic follow-up question #1
-TURN 6 - ASSISTANT: Use information-gathering tools if needed OR use ONLY RespondToUserTool
-TURN 7 - USER: Tool execution results (if Turn 6 had info gathering) OR second follow-up question
+TURN 6 - ASSISTANT: **DECIDE INTELLIGENTLY**: Use information-gathering tools if question requires NEW data/research OR use ONLY RespondToUserTool if answerable from existing context
+TURN 7 - USER: Tool execution results (if Turn 6 had info gathering) OR second follow-up question (if Turn 6 answered directly)
 TURN 8 - ASSISTANT: Use ONLY RespondToUserTool to answer the follow-up question
 TURN 9 - USER: Realistic follow-up question #2
-TURN 10 - ASSISTANT: Use ONLY RespondToUserTool to answer the final question
+TURN 10 - ASSISTANT: **DECIDE INTELLIGENTLY**: Use information-gathering tools if question requires NEW data/research OR use ONLY RespondToUserTool if answerable from existing context
 
 ASSISTANT INFORMATION-GATHERING FORMAT:
 {{
@@ -215,11 +245,20 @@ ASSISTANT RESPONSE FORMAT (answering user with ONLY RespondToUserTool):
 }}
 
 REALISTIC FOLLOW-UP QUESTIONS:
-- "What if I need it urgently?"
-- "Can I get a higher-spec model?"
-- "How long does manager approval take?"
-- "What happens to my old laptop?"
-- "Are there any accessories included?"
+
+COMPLEX FOLLOW-UPS (require tools):
+- "What about software licensing for the new laptop?" (NEW topic - needs research)
+- "Can I get a higher-spec model for video editing?" (needs catalog/policy check)
+- "What's the policy for remote work equipment?" (NEW policy topic)
+- "Are there any security requirements for the setup?" (needs compliance info)
+- "Can I upgrade the RAM and storage?" (needs technical specs/policies)
+
+SIMPLE FOLLOW-UPS (use existing context):
+- "What if I need it urgently?" (timeline clarification from existing info)
+- "How long does manager approval take?" (process clarification)
+- "What happens to my old laptop?" (standard procedure question)
+- "Are there any accessories included?" (specs clarification)
+- "Who do I contact if I have issues?" (contact info from existing context)
 
 Generate the conversation using ONE of these EXACT formats:
 
@@ -257,13 +296,15 @@ ABSOLUTE REQUIREMENTS:
 - Use seed question from taxonomy.yaml exactly as provided
 - Generate 2-3 realistic user questions (not tool execution results)
 - Tool execution results are just the list, not questions
-- When answering user: Use ONLY RespondToUserTool
-- When gathering info: Use KnowledgeSearchTool, FindCatalogTool, MyRequestsTool, etc.
+- **INTELLIGENT TOOL USAGE**: Assistant must decide based on question complexity:
+  * Use information-gathering tools (KnowledgeSearchTool, FindCatalogTool, MyRequestsTool) when question requires NEW data/research
+  * Use ONLY RespondToUserTool when answerable from existing context
+- Mix of complex follow-ups (requiring tools) and simple follow-ups (using existing context)
 - Include detailed, realistic tool parameters and comprehensive responses
 - Variable turns: 8 turns (Pattern A) OR 10 turns (Pattern B)
 - ALWAYS ends with RespondToUserTool with success: true
 - 50% distribution between Pattern A and Pattern B
-- Follow the exact flow shown in the example
+- Follow the intelligent decision-making flow shown in examples
 
 Available tools: {', '.join(AVAILABLE_TOOLS)}"""
 
