@@ -410,40 +410,60 @@ def generate_sample_data(output_file: str, num_conversations: int = 500, api_key
         generation_params={"max_completion_tokens": 6144}
     )
     
-    dataset_items = []
-    for i in range(num_conversations):
-        seed_question = all_seeds[i % len(all_seeds)]
-        dataset_items.append({
-            "seed_question": seed_question
-        })
-    
-    input_dataset = Dataset.from_list(dataset_items)
-    
-    print(f"Generating {num_conversations} Ambiguity & Clarification conversations...")
-    results = generator(input_dataset)
-    
     conversations = []
+    max_retries = 3
+    retry_count = 0
     
-    if hasattr(results, 'dataset') and results.dataset is not None:
-        result_dataset = results.dataset
-        if hasattr(result_dataset, 'to_list'):
-            result_list = result_dataset.to_list()
-        elif hasattr(result_dataset, '__iter__'):
-            result_list = list(result_dataset)
+    while len(conversations) < num_conversations and retry_count < max_retries:
+        remaining_count = num_conversations - len(conversations)
+        
+        # Generate a few extra to account for filtering
+        generation_count = min(remaining_count + max(5, remaining_count // 2), remaining_count * 2)
+        
+        print(f"Generating {generation_count} Ambiguity & Clarification conversations (attempt {retry_count + 1}, need {remaining_count} more)...")
+        
+        dataset_items = []
+        for i in range(generation_count):
+            seed_question = all_seeds[i % len(all_seeds)]
+            dataset_items.append({
+                "seed_question": seed_question
+            })
+        
+        input_dataset = Dataset.from_list(dataset_items)
+        results = generator(input_dataset)
+        
+        if hasattr(results, 'dataset') and results.dataset is not None:
+            result_dataset = results.dataset
+            if hasattr(result_dataset, 'to_list'):
+                result_list = result_dataset.to_list()
+            elif hasattr(result_dataset, '__iter__'):
+                result_list = list(result_dataset)
+            else:
+                result_list = []
         else:
             result_list = []
-    else:
-        result_list = []
+        
+        valid_conversations = []
+        for result in result_list:
+            if isinstance(result, dict) and "full_conversation" in result:
+                try:
+                    conversation = json.loads(result["full_conversation"])
+                    if len(conversation) == 10:
+                        valid_conversations.append(conversation)
+                except (json.JSONDecodeError, TypeError):
+                    if isinstance(result["full_conversation"], list) and len(result["full_conversation"]) == 10:
+                        valid_conversations.append(result["full_conversation"])
+        
+        conversations.extend(valid_conversations[:remaining_count])
+        retry_count += 1
+        
+        print(f"  → Generated {len(valid_conversations)} valid conversations, total: {len(conversations)}/{num_conversations}")
+        
+        if len(conversations) >= num_conversations:
+            break
     
-    for result in result_list:
-        if isinstance(result, dict) and "full_conversation" in result:
-            try:
-                conversation = json.loads(result["full_conversation"])
-                if len(conversation) == 10:
-                    conversations.append(conversation)
-            except (json.JSONDecodeError, TypeError):
-                if isinstance(result["full_conversation"], list) and len(result["full_conversation"]) == 10:
-                    conversations.append(result["full_conversation"])
+    # Trim to exact count if we got more than requested
+    conversations = conversations[:num_conversations]
     
     dataset = {
         "conversations": conversations,
